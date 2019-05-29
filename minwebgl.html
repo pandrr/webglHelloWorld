@@ -1,0 +1,119 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <canvas id="glcanvas" width="640" height="480" style="border:1px solid red;"></canvas>
+        <script>
+
+            const gl = document.getElementById("glcanvas").getContext('webgl2',{});
+            
+            // --------------------------------------------------
+            // SETUP VERTICES FOR A RECTANGLE 
+            // --------------------------------------------------
+            
+            const rectVerts=new Float32Array([
+                0,0,
+                1,0,
+                1,1,
+
+                0,0,
+                0,1,
+                1,1]);
+
+            const glVertBuffer=gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, glVertBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, rectVerts, gl.STATIC_DRAW);
+
+            // --------------------------------------------------
+            // CREATE SHADER
+            // --------------------------------------------------
+
+            function createShader(type,program,src)
+            {
+                var shader=gl.createShader(type);
+                gl.shaderSource(shader, src);
+                gl.compileShader(shader);
+            
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    console.log(src);
+                    console.log('error shader',gl.getShaderInfoLog(shader));
+                }
+                gl.attachShader(program, shader);
+                
+                return shader;
+            }
+            const srcVert=
+                'attribute vec2 vertPos;\n'+
+                'varying vec2 texCoord;\n'+
+
+                'uniform vec2 canvasSize;\n'+
+                'uniform vec2 rectSize;\n'+
+                'uniform vec2 rectPos;\n'+
+
+                'void main()\n'+
+                '{\n'+
+                '   texCoord=vertPos;\n'+
+                '   vec2 screenPos=(vertPos*rectSize+rectPos)/canvasSize;\n'+
+                '   screenPos.y=1.0-screenPos.y;\n'+
+                '   gl_Position = vec4( screenPos*2.0-1.0, 0, 1);\n'+
+                '}\n';
+
+            const srcFrag=
+                'precision highp float;\n'+
+                'varying vec2 texCoord;\n'+
+                'void main()\n'+
+                '{\n'+
+                '   gl_FragColor = vec4(texCoord.x,texCoord.y,1.0,1.0);\n'+
+                '}\n';
+
+            const program = gl.createProgram();
+            const vertShader=createShader(gl.VERTEX_SHADER,program,srcVert);
+            const fragShader=createShader(gl.FRAGMENT_SHADER,program,srcFrag);
+       
+            gl.linkProgram(program);
+            gl.validateProgram(program);
+        
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+            {
+                console.warn(gl.getShaderInfoLog(this.fshader));
+                console.warn(gl.getShaderInfoLog(this.vshader));
+                console.error(name + " shader linking fail...");
+            }        
+
+            gl.useProgram(program);
+
+            const attrVertPosLoc=gl.getAttribLocation(program, "vertPos");
+
+            const uniPos=gl.getUniformLocation(program,"rectPos");
+            const uniSize=gl.getUniformLocation(program,"rectSize");
+            const uniCanvasSize=gl.getUniformLocation(program,"canvasSize");
+
+            // --------------------------------------------------
+            // main loop
+            // --------------------------------------------------
+
+            requestAnimationFrame(mainloop);
+
+            function mainloop()
+            {
+                gl.viewport(0,0,640,480);
+                gl.clearColor(0,1,0,1);
+                gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+                
+                gl.useProgram(program);
+                gl.uniform2f(uniPos,        10,0);
+                gl.uniform2f(uniSize,       320,240);
+                gl.uniform2f(uniCanvasSize, 640,480);
+
+                gl.enableVertexAttribArray(attrVertPosLoc);
+                gl.bindBuffer(gl.ARRAY_BUFFER, glVertBuffer);
+                gl.vertexAttribPointer(attrVertPosLoc,2,gl.FLOAT,false,2*4,0);
+                gl.drawArrays(gl.TRIANGLES, 0,6);
+
+                requestAnimationFrame(mainloop);
+            }
+
+        </script>
+
+    </body>
+</html>
